@@ -1,0 +1,115 @@
+@Metadata.layer: #CORE
+@UI: {
+  headerInfo: { typeName: 'Travel',
+                typeNamePlural: 'Travels',
+                title: { type: #STANDARD, label: 'Travel', value: 'TravelID' } },
+  presentationVariant: [{ sortOrder: [{ by: 'TravelID', direction:  #DESC }] }] }
+annotate view ZC_RAP_TRAVEL_30329
+    with 
+{
+
+/*Some of the consumption specific element annotations specified in the BO projection views make the need for UI annotations redundant. 
+This is the case for the elements AgencyName and CustomerName which are the textual descriptions for AgencyID and CustomerID respectively, 
+and for the element CurrencyCode which is the reference field for BookingFee and TotalPrice.
+These three elements will be automatically displayed together with their related elements on the UI.
+https://help.sap.com/docs/btp/sap-abap-restful-application-programming-model/defining-cds-annotations-for-metadata-driven-uis
+Therefore, remove the elements AgencyName, CustomerName, and CurrencyCode, and also all associations, i.e. _Currency, _Booking and _Agency and _Customer, from the element list.
+*/
+    @UI.facet: [ { id:              'Travel',
+                 purpose:         #STANDARD,
+                 type:            #IDENTIFICATION_REFERENCE,
+                 label:           'Travel',
+                 position:        10 },
+               { id:              'Booking',
+                 purpose:         #STANDARD,
+                 type:            #LINEITEM_REFERENCE, /*line item */
+                 label:           'Booking',
+                 position:        20,
+                 targetElement:   '_Booking'} ]  /*booking composition */
+
+  @UI:{ identification: [{ position: 1, label: 'Travel UUID' }] }
+  TravelUUID;
+
+  @UI: {  lineItem:       [ { position: 10 } ],
+          identification: [ { position: 10 } ],
+          selectionField: [ { position: 10 } ] }  
+  TravelID;
+
+  @UI: {  lineItem:       [ { position: 20 } ],
+          identification: [ { position: 20 } ],
+          selectionField: [ { position: 20 } ] }  
+  AgencyID;
+
+  @UI: {  lineItem:       [ { position: 30 } ],
+          identification: [ { position: 30 } ],
+          selectionField: [ { position: 30 } ] }  
+  CustomerID;
+
+  @UI: {  lineItem:       [ { position: 40 } ],
+          identification: [ { position: 40 } ] }  
+  BeginDate;
+
+  @UI: {  lineItem:       [ { position: 50 } ],
+          identification: [ { position: 50 } ] }   
+  EndDate;
+
+  @UI: {  lineItem:       [ { position: 60 } ],
+          identification: [ { position: 60 } ] }   
+  BookingFee;
+
+  @UI: {  lineItem:       [ { position: 70 } ],
+          identification: [ { position: 70 } ] }   
+  TotalPrice;
+
+  @UI: {  lineItem:       [ { position: 80 } ],
+          identification: [ { position: 80 } ] }          
+  Description;
+
+  /*@UI: {  lineItem:       [ { position: 90 } ],
+          identification: [ { position: 90 } ] }    */
+          
+@UI: {  lineItem:       [ { position: 90 },
+                            { type: #FOR_ACTION, dataAction: 'acceptTravel', label: 'Accept Travel' },
+                            { type: #FOR_ACTION, dataAction: 'rejecttravel', label: 'Reject Travel' }
+                          ],
+          identification: [ { position: 90 },
+                            { type: #FOR_ACTION, dataAction: 'acceptTravel', label: 'Accept Travel' },
+                            { type: #FOR_ACTION, dataAction: 'rejecttravel', label: 'Reject Travel' }
+                          ] } 
+                                    
+  TravelStatus;
+
+  @UI.hidden: true
+  LastChangedAt;
+
+  @UI.hidden: true
+  LocalLastChangedAt;
+  
+  /*Short Explanation: What has changed?
+
+#CORE is specified as the metadata layer since you are the application provider.
+When multiple metadata extensions are defined for a given CDS entity, the layer determines the priority of the metadata. #CORE has the lowest, 
+and #CUSTOMER the highest priority.
+Header information – such as type name and Title – and the presentation variant for our list report app using @UI view annotations are defined 
+at the top before the ANNOTATE VIEW statement. The queried travel data will be sorted in the descending order by the element TravelID in the list.
+The navigation to the object page and its layout is defined using @UI.facet annotations in the curly brackets. The travel object page has two facets:
+ the identification reference of the travel entity and the line item reference of the Booking entity – with the _Booking composition specified as
+  target element.
+Various @UI annotations are used to specify the layout of each elements on the travel list and the object page.
+About the UI Annotations
+As already mentioned, the focus of this course is on the RESTful back-end implementation of apps. Therefore, we will use only a few UI annotations 
+to enrich the projected CDS data model for the later generation of our SAP Fiori elements Travel app.
+More information about Defining CDS Annotations for Metadata-Driven UIs and the UI Annotations supported in ABAP CDS can be found in the SAP Help Portal.
+
+For example,
+
+The UI annotation @UI.lineItem is used to specify the layout information of each elements shown as column in the list.
+The UI annotation @UI.identification is used to specify the layout information of each element shown in the identification section of the object page.
+The UI annotation @UI.selectionField is used to enable an element for selection in the filter bar. If a value-help is defined for the given element, 
+then it is automatically exposed to the UI.
+For the positioning order, any decimal number can be used as value for the property position.
+With the UI annotation @UI.hidden:true, we prevent elements from being displayed on the UI or in the personalization settings dialog.
+
+*/
+    
+}

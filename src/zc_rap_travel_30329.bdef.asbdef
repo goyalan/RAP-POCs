@@ -1,0 +1,39 @@
+projection;
+use draft ;
+//strict ( 1 ); //Uncomment this line in order to enable strict mode 2.
+// The strict mode has two variants (strict(1), strict(2)) and is prerequisite to be
+//future proof regarding syntax and to be able to release your BO.
+
+/*projection is specified at the top since the proper implementation type is specified
+in the underlying behavior definition.
+All operations and associations defined in the underlying behavior
+definition at the creation time are automatically exposed in the projection
+ using the keyword use.
+*/
+define behavior for ZC_RAP_TRAVEL_30329 alias Travel
+// Because SAP Fiori elements-based UIs do not currently support the Etag handling together with
+// the
+// draft handling for OData V2, you have to disable it in the projected behavior definition.
+//use etag
+{
+  use create;
+  use update;
+  use delete;
+
+  use association _Booking { create; with draft; }
+
+ /*
+ Project the two new actions acceptTravel and rejectTravel by adding the use statements
+ */
+ use action acceptTravel;
+ use action rejecttravel;
+}
+
+define behavior for ZC_RAP_BOOKING_30329 alias Booking
+//use etag
+{
+  use update;
+  use delete;
+
+  use association _Travel { with draft; }
+}

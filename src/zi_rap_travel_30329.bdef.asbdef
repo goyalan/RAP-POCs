@@ -1,0 +1,186 @@
+managed implementation in class zbp_i_rap_travel_30329 unique;
+with draft;
+/*you will enhance the standard transactional behavior of your managed business object
+ by defining determinations, validations and actions. You will also add static
+  and dynamic feature control.
+*/
+
+
+/*strict ( 1 );*//*BDEF strict mode applies additional syntax checks to CDS behavior
+ definitions. It ensures, for example, that no outdated syntax is used, implicitly
+  available operations are declared explicitly, and a RAP BO complies to best practices.
+  The implementation of BDEF strict mode is provided by the RAP framework, no implementation
+   in an ABAP behavior pool is required.
+BDEF strict mode is available for CDS behavior definitions of type managed, unmanaged,
+projection, and abstract */
+
+
+define behavior for ZI_RAP_TRAVEL_30329 alias Travel
+persistent table zrap_atrav_30329  /*define persistent table where final data will sit persistely */
+//
+//Note: As already mentioned, whenever you change the BO data model, you can again use the ADT
+ //Quick Fix (Ctrl+1) to generate again the draft table definition.
+ //This will update the table definition.
+ //
+draft table zrap_dtrav_30329
+
+//Specify a total etag field in the root entity of your BO. This is required to identify
+// changes to active instances in cases where the durable lock has expired.
+//The field LastChangedAt will be used for the purpose in the present scenario.
+
+lock master total etag LastChangedAt /* Enable the lock handling for the Travel entity which is the root node of the composition.
+Please note: The lock is handled generically by the RAP framework in the managed scenario. */
+//authorization master ( instance )
+etag master LocalLastChangedAt
+/*Effect
+◾Defines an entity as ETag master and assigns a field MasterField for change logging. Root entities are often ETag masters that log the changes of every business object entity that is part of the BO.
+◾In a managed RAP BO, a value for the total ETag field can be provided automatically if the following conditions are met: •The ETag field MasterField must be annotated in CDS with the annotation @Semantics.systemDateTime.localInstanceLastChangedAt: true
+•The data type must be date compatible. */
+
+
+{
+  create;
+  update;
+  delete;
+  association _Booking { create; with draft; }
+ /* As this is a UUID based scenario, we want the managed runtime to automatically generate and assign a
+ key when new instances are created.
+To achieve this, specify the key field TravelUUID to be fully managed by the runtime and not editable from
+ outside using the keywords numbering:managed and readonly.
+ Add the new statement provided below after the statement association _Booking { create; }.
+ */
+
+  field ( numbering : managed, readonly ) TravelUUID;
+  field ( readonly ) TravelID , TotalPrice , TravelStatus ;
+  field ( readonly ) LastChangedAt , LastChangedBy , CreatedAt , CreatedBy , LocalLastChangedAT ;
+  field ( mandatory ) AgencyID , CustomerID ; /*Note this will only mark red colour * mark in UI , still validation is required . */
+
+
+/* Define two actions
+Define the two actions acceptTravel and rejectTravel with dynamic feature control
+ for approving and rejecting travels. Both return  $self with cardinality 1 as
+  the result. $self means that the instance of the same type is returned on which
+   the operation is performed.
+Also define one additional actions
+Define the internal action recalcTotalPrice for the re-calculation of the total price.
+*/
+action ( features : instance ) acceptTravel result [1] $self ;
+action ( features : instance ) rejecttravel result [1] $self ;
+internal action recalcTotalPrice ;
+
+
+/*Define two determination
+The setInitialStatus determination is used to default the status to N whenever a new instance is created.
+It uses the create trigger on Modify.
+The calculateTotalPrice determination is used to update the total price whenever the BookingFee or CurrencyCode is changed.
+The calculateTravelID is used to determine the TravelID when a new instance is created.
+It is executed on save.
+Please note that the calculation of the TravelID is only used for demonstration purposes.
+The primary key of the Travel business object is still the TravelUUID.
+*/
+determination setInitialStatus on modify {create; }
+determination calculateTotalPrice on modify { field BookingFee , CurrencyCode ; }
+determination calculateTravelID on save { create ; }
+
+
+/*define 3 validation on save */
+validation validateAgency on save { field AgencyID ; create ; }
+validation validateCustomer on save { field CustomerID ; create ; }
+validation validateDates on save { field BeginDate , EndDate ; create ; }
+
+
+/*
+When a draft instance is going to be activated, the SAP Fiori elements UI calls the draft
+determine action prepare in the backend. This call takes place in a separate OData changeset
+to allow for saving the state messages even in case the activation fails due to failing
+validations.
+In order to execute the validations during prepare, you need to assign them to the draft
+ determine action prepare trigger.
+*/
+draft determine action Prepare  {
+    validation validateAgency;
+    validation validateCustomer;
+    validation validateDates;
+  }
+
+/* Define a mapping between the persistency table fields and the CDS view fields for the travel entity.
+Because we have provided aliases in the interface CDS views, we need to tell the framework how to map
+ the element names in the CDS data model to the corresponding table fields.
+ */
+ mapping for zrap_atrav_30329
+  {
+    /* i cds field  = table field  */
+    TravelUUID         = travel_uuid;
+    TravelID           = travel_id;
+    AgencyID           = agency_id;
+    CustomerID         = customer_id;
+    BeginDate          = begin_date;
+    EndDate            = end_date;
+    BookingFee         = booking_fee;
+    TotalPrice         = total_price;
+    CurrencyCode       = currency_code;
+    Description        = description;
+    TravelStatus       = overall_status;
+    CreatedBy          = created_by;
+    CreatedAt          = created_at;
+    LastChangedBy      = last_changed_by;
+    LastChangedAt      = last_changed_at;
+    LocalLastChangedAt = local_last_changed_at;
+  }
+
+}
+
+define behavior for ZI_RAP_BOOKING_30329 alias Booking
+implementation in class zbp_i_rap_booking_30329 unique
+persistent table zrap_abook_30329
+draft table zrap_dbook_30329
+/*
+Enable the lock handling for the Booking entity which is a child node in the composition model –
+Travel being the lock master as the root entity. For this reason, the booking entity is lock dependent
+and makes use of the _Travel association defined in the appropriate CDS view.
+As already mentioned above, the lock is handled generically by the framework in the managed scenario.*/
+lock dependent by _Travel
+/* this is optimistic lock
+Optimistic locking , where a record is locked only when changes are committed to the database.
+Pessimistic locking , where a record is locked while it is edited.
+Please note
+Defining two ETag masters happens on purpose. The recommended approach is to have a local etag for each entity.
+This is achieved by specifying an etag master on each node.*/
+//authorization dependent by _Travel
+etag master LocalLastChangedAT
+{
+  update;
+  delete;
+  field ( readonly ) TravelUUID;
+  association _Travel { with draft; }
+  field ( numbering : managed, readonly ) BookingUUID;
+  /*
+  There is one warning indicating that the TravelUUID in the booking entity should be set to readonly,
+  as it is used in the on-condition of the association.
+  In order to solve this, add the following line to the behavior definition.
+  field ( readonly ) TravelUUID;
+  */
+  /*field ( readonly ) TravelUUID;*/
+
+  field ( readonly ) CreatedBy, LastChangedBy, LocalLastChangedAt;
+
+  determination calculateBookingID  on modify { create; }
+  determination calculateTotalPrice on modify { field FlightPrice, CurrencyCode; }
+
+  mapping for zrap_abook_30329
+  {
+    BookingUUID        = booking_uuid;
+    TravelUUID         = travel_uuid;
+    BookingID          = booking_id;
+    BookingDate        = booking_date;
+    CustomerID         = customer_id;
+    CarrierID          = carrier_id;
+    ConnectionID       = connection_id;
+    FlightDate         = flight_date;
+    FlightPrice        = flight_price;
+    CurrencyCode       = currency_code;
+    CreatedBy          = created_by;
+    LastChangedBy      = last_changed_by;
+    LocalLastChangedAt = local_last_changed_at;
+  }
+}
